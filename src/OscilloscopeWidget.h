@@ -1,35 +1,43 @@
 ﻿#pragma once
 
-#include <array>
-
 #include <QWidget>
-
-#include "DataEngine.h"
+#include <QVector>
+#include <QPaintEvent>
 
 class OscilloscopeWidget : public QWidget {
-public:
-    explicit OscilloscopeWidget(DataEngine* engine, QWidget* parent = nullptr);
+    Q_OBJECT
 
+public:
+    explicit OscilloscopeWidget(QWidget* parent = nullptr);
+
+    void setChannelCount(int count);
+    void setChannelEnabled(int channel, bool enabled);
     void setSeriesVisible(int channel, bool voltageVisible, bool currentVisible);
+
+    void updateVoltage(int channel, int milliVolt);
+    void updateCurrent(int channel, int milliAmp);
+
     void setChannelPowered(int channel, bool powered);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
 
 private:
-    struct VisibilityState {
-        bool voltageVisible = true;
-        bool currentVisible = true;
-    };
+    void drawChannel(QPainter& p, int channel, const QRect& rect);
 
-    static constexpr int kChannelCount = 4;
+    static constexpr int kMaxChannels = 4;
+    static constexpr int kMaxSamples = 100;
     static constexpr int kMaxMilliUnit = 5500;
 
-    int indexFromChannel(int channel) const;
-    int yForValue(int value, const QRect& plotRect) const;
-    int xForSampleIndex(int sampleIndex, int sampleCount, const QRect& plotRect) const;
+    struct ChannelData {
+        QVector<int> voltageHistory;
+        QVector<int> currentHistory;
+        bool voltageVisible = true;
+        bool currentVisible = true;
+        bool powered = false;
+        bool enabled = true;
+    };
 
-    DataEngine* engine_ = nullptr;
-    std::array<VisibilityState, kChannelCount> visibility_{};
-    std::array<bool, kChannelCount> powered_{{false, false, false, false}};
+    QVector<ChannelData> channels_;
+    int channelCount_ = 4;
 };

@@ -12,8 +12,6 @@
 #include <QString>
 #include <QTimer>
 
-#include "DataEngine.h"
-
 class OscilloscopeWidget;
 class SmartUSBHub;
 
@@ -45,7 +43,6 @@ private:
     void updateConnectionText();
     void updateChannelUiValues(int channel, std::optional<int> power, std::optional<int> voltage, std::optional<int> current);
 
-    DataEngine engine_;
     std::unique_ptr<SmartUSBHub> hub_;
 
     QWidget* rootWidget_ = nullptr;

@@ -27,6 +27,7 @@ void MainWindow::setupUi() {
     rootLayout->setContentsMargins(10, 10, 10, 10);
     rootLayout->setSpacing(8);
 
+    // Connection row
     auto* connectRow = new QHBoxLayout();
     connectRow->setSpacing(8);
 
@@ -42,60 +43,78 @@ void MainWindow::setupUi() {
     connectionLabel_ = new QLabel("Device: not connected (input serial port and click Connect)", rootWidget_);
     rootLayout->addWidget(connectionLabel_);
 
-    auto* controls = new QGridLayout();
-    controls->setHorizontalSpacing(12);
-    controls->setVerticalSpacing(6);
+    // Channel controls - matching Python version layout
+    auto* controlsLayout = new QVBoxLayout();
+    controlsLayout->setSpacing(6);
 
-    for (int ch = 1; ch <= kChannelCount; ++ch) {
-        const int row = ch - 1;
-        auto& ui = channelUi_[row];
+    for (int ch = 0; ch < kChannelCount; ++ch) {
+        auto& ui = channelUi_[ch];
 
-        ui.powerButton = new QPushButton(QString("Channel %1").arg(ch), rootWidget_);
+        // Channel row: button + voltage checkbox + current checkbox + value labels
+        auto* channelRow = new QHBoxLayout();
+        channelRow->setSpacing(12);
+
+        // Power button
+        ui.powerButton = new QPushButton(QString("Channel %1").arg(ch + 1), rootWidget_);
+        ui.powerButton->setFixedWidth(90);
         ui.powerButton->setCheckable(true);
+        ui.powerButton->setChecked(true);
+        channelRow->addWidget(ui.powerButton);
 
+        // Voltage checkbox and label
         ui.voltageCheck = new QCheckBox("Voltage", rootWidget_);
         ui.voltageCheck->setChecked(true);
-
-        ui.currentCheck = new QCheckBox("Current", rootWidget_);
-        ui.currentCheck->setChecked(true);
+        channelRow->addWidget(ui.voltageCheck);
 
         ui.voltageLabel = new QLabel("-- V", rootWidget_);
-        ui.currentLabel = new QLabel("-- A", rootWidget_);
+        ui.voltageLabel->setMinimumWidth(80);
+        ui.voltageLabel->setStyleSheet("color: rgb(255, 255, 0); font-weight: bold;");
+        channelRow->addWidget(ui.voltageLabel);
 
-        controls->addWidget(ui.powerButton, row, 0);
-        controls->addWidget(ui.voltageCheck, row, 1);
-        controls->addWidget(ui.currentCheck, row, 2);
-        controls->addWidget(ui.voltageLabel, row, 3);
-        controls->addWidget(ui.currentLabel, row, 4);
+        // Current checkbox and label
+        ui.currentCheck = new QCheckBox("Current", rootWidget_);
+        ui.currentCheck->setChecked(true);
+        channelRow->addWidget(ui.currentCheck);
+
+        ui.currentLabel = new QLabel("-- A", rootWidget_);
+        ui.currentLabel->setMinimumWidth(80);
+        ui.currentLabel->setStyleSheet("color: rgb(218, 0, 102); font-weight: bold;");
+        channelRow->addWidget(ui.currentLabel);
+
+        channelRow->addStretch();
+        controlsLayout->addLayout(channelRow);
 
         connect(ui.powerButton, &QPushButton::toggled, this, [this, ch](bool checked) {
-            onPowerToggled(ch, checked);
+            onPowerToggled(ch + 1, checked);
         });
 
         connect(ui.voltageCheck, &QCheckBox::stateChanged, this, [this, ch](int) {
-            onSeriesVisibilityChanged(ch);
+            onSeriesVisibilityChanged(ch + 1);
         });
         connect(ui.currentCheck, &QCheckBox::stateChanged, this, [this, ch](int) {
-            onSeriesVisibilityChanged(ch);
+            onSeriesVisibilityChanged(ch + 1);
         });
     }
 
-    rootLayout->addLayout(controls);
+    rootLayout->addLayout(controlsLayout);
 
-    oscilloscope_ = new OscilloscopeWidget(&engine_, rootWidget_);
+    // Oscilloscope widget - matching Python PlotWidget
+    oscilloscope_ = new OscilloscopeWidget(rootWidget_);
     rootLayout->addWidget(oscilloscope_, 1);
 
     setCentralWidget(rootWidget_);
     setWindowTitle("Smart USB Hub Oscilloscope");
-    resize(1180, 760);
+    resize(1000, 700);
+
+    // Style sheet - dark theme
     setStyleSheet(
-        "QWidget { background-color: #3d3f45; color: #d8d8d8; }"
+        "QWidget { background-color: #323436; color: #d8d8d8; }"
         "QLabel { color: #d8d8d8; }"
         "QLineEdit { background: #202226; border: 1px solid #5e6168; border-radius: 4px; padding: 5px 8px; color: #eeeeee; }"
-        "QPushButton { background: #6f7278; border: 1px solid #80848a; border-radius: 6px; padding: 5px 10px; color: #f1f1f1; }"
+        "QPushButton { background: #6f7278; border: 1px solid #80848a; border-radius: 6px; padding: 6px 12px; color: #f1f1f1; }"
         "QPushButton:hover { background: #7d8086; }"
         "QPushButton:checked { background: #e9b507; color: #1a1a1a; border-color: #f0c63c; font-weight: 600; }"
-        "QCheckBox { spacing: 6px; }"
+        "QCheckBox { spacing: 6px; color: #d8d8d8; }"
         "QCheckBox::indicator { width: 14px; height: 14px; }"
         "QCheckBox::indicator:unchecked { background: #2a2d33; border: 1px solid #80848a; }"
         "QCheckBox::indicator:checked { background: #e9b507; border: 1px solid #f0c63c; }");
@@ -149,7 +168,6 @@ void MainWindow::pollOneChannel() {
     }
 
     updateChannelUiValues(channel, power, voltage, current);
-    oscilloscope_->update();
 }
 
 void MainWindow::onPowerToggled(int channel, bool checked) {
@@ -165,16 +183,15 @@ void MainWindow::onPowerToggled(int channel, bool checked) {
         return;
     }
 
-    oscilloscope_->setChannelPowered(channel, checked);
+    oscilloscope_->setChannelPowered(channel - 1, checked);
 }
 
 void MainWindow::onSeriesVisibilityChanged(int channel) {
     auto& ui = channelUi_[channel - 1];
     oscilloscope_->setSeriesVisible(
-        channel,
+        channel - 1,
         ui.voltageCheck->isChecked(),
         ui.currentCheck->isChecked());
-    oscilloscope_->update();
 }
 
 void MainWindow::onConnectClicked() {
@@ -222,20 +239,18 @@ void MainWindow::updateChannelUiValues(
     if (power.has_value()) {
         QSignalBlocker blocker(ui.powerButton);
         ui.powerButton->setChecked(power.value() != 0);
-        oscilloscope_->setChannelPowered(channel, power.value() != 0);
+        oscilloscope_->setChannelPowered(idx, power.value() != 0);
     }
 
     if (voltage.has_value()) {
         latestVoltage_[idx] = voltage;
         ui.voltageLabel->setText(QString::asprintf("%.3f V", voltage.value() / 1000.0));
+        oscilloscope_->updateVoltage(idx, voltage.value());
     }
 
     if (current.has_value()) {
         latestCurrent_[idx] = current;
         ui.currentLabel->setText(QString::asprintf("%.3f A", current.value() / 1000.0));
-    }
-
-    if (latestVoltage_[idx].has_value() && latestCurrent_[idx].has_value()) {
-        engine_.push(channel, latestVoltage_[idx].value(), latestCurrent_[idx].value());
+        oscilloscope_->updateCurrent(idx, current.value());
     }
 }

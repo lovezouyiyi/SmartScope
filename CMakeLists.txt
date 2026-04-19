@@ -10,7 +10,6 @@ add_executable(SmartScope
     src/main.cpp
     src/MainWindow.cpp
     src/OscilloscopeWidget.cpp
-    src/DataEngine.cpp
     src/SmartUSBHub.cpp
 )
 
