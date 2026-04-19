@@ -26,7 +26,8 @@ private:
     static constexpr int kMaxMilliUnit = 5500;
 
     int indexFromChannel(int channel) const;
-    int yForValue(int value, int rowTop, int rowHeight) const;
+    int yForValue(int value, const QRect& plotRect) const;
+    int xForSampleIndex(int sampleIndex, int sampleCount, const QRect& plotRect) const;
 
     DataEngine* engine_ = nullptr;
     std::array<VisibilityState, kChannelCount> visibility_{};

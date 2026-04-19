@@ -50,7 +50,7 @@ void MainWindow::setupUi() {
         const int row = ch - 1;
         auto& ui = channelUi_[row];
 
-        ui.powerButton = new QPushButton(QString("CH%1 Power").arg(ch), rootWidget_);
+        ui.powerButton = new QPushButton(QString("Channel %1").arg(ch), rootWidget_);
         ui.powerButton->setCheckable(true);
 
         ui.voltageCheck = new QCheckBox("Voltage", rootWidget_);
@@ -86,8 +86,19 @@ void MainWindow::setupUi() {
     rootLayout->addWidget(oscilloscope_, 1);
 
     setCentralWidget(rootWidget_);
-    setWindowTitle("SmartScope (C++ Refactor)");
+    setWindowTitle("Smart USB Hub Oscilloscope");
     resize(1180, 760);
+    setStyleSheet(
+        "QWidget { background-color: #3d3f45; color: #d8d8d8; }"
+        "QLabel { color: #d8d8d8; }"
+        "QLineEdit { background: #202226; border: 1px solid #5e6168; border-radius: 4px; padding: 5px 8px; color: #eeeeee; }"
+        "QPushButton { background: #6f7278; border: 1px solid #80848a; border-radius: 6px; padding: 5px 10px; color: #f1f1f1; }"
+        "QPushButton:hover { background: #7d8086; }"
+        "QPushButton:checked { background: #e9b507; color: #1a1a1a; border-color: #f0c63c; font-weight: 600; }"
+        "QCheckBox { spacing: 6px; }"
+        "QCheckBox::indicator { width: 14px; height: 14px; }"
+        "QCheckBox::indicator:unchecked { background: #2a2d33; border: 1px solid #80848a; }"
+        "QCheckBox::indicator:checked { background: #e9b507; border: 1px solid #f0c63c; }");
 
     connect(connectButton_, &QPushButton::clicked, this, [this]() { onConnectClicked(); });
     connect(portEdit_, &QLineEdit::returnPressed, this, [this]() { onConnectClicked(); });
