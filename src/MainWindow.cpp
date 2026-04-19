@@ -108,6 +108,8 @@ void MainWindow::pollOneChannel() {
     const auto power = hub_->getChannelPowerStatus(channel);
     const auto voltage = hub_->getChannelVoltage(channel);
     const auto current = hub_->getChannelCurrent(channel);
+    //gfgfg
+    
 
     if (!power && !voltage && !current) {
         hub_->disconnect();
