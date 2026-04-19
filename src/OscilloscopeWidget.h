@@ -5,8 +5,6 @@
 #include <QPaintEvent>
 
 class OscilloscopeWidget : public QWidget {
-    Q_OBJECT
-
 public:
     explicit OscilloscopeWidget(QWidget* parent = nullptr);
 
