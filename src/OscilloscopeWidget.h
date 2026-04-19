@@ -43,8 +43,8 @@ private slots:
     void toggleChannel(int channelIdx);
     void toggleCurve(int channelIdx, const QString& dataType);
 
-#ifdef USE_QT_CHARTS
 private:
+#ifdef USE_QT_CHARTS
     struct ChannelWidgets {
         QPushButton* button = nullptr;
         QCheckBox* voltageCheck = nullptr;
