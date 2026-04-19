@@ -44,7 +44,8 @@ void OscilloscopeWidget::paintEvent(QPaintEvent* event) {
         return;
     }
 
-    const int rowGap = 8;
+    const int labelWidth = 60;
+    const int rowGap = 6;
     const int totalGap = rowGap * (kChannelCount + 1);
     const int rowH = (h - totalGap) / kChannelCount;
 
@@ -52,8 +53,8 @@ void OscilloscopeWidget::paintEvent(QPaintEvent* event) {
         const int idx = ch - 1;
         const int rowTop = rowGap + idx * (rowH + rowGap);
         const QRect panelRect(10, rowTop, w - 20, rowH);
-        const QRect plotRect(panelRect.left() + 70, panelRect.top() + 8,
-                             panelRect.width() - 88, panelRect.height() - 24);
+        const QRect plotRect(panelRect.left() + labelWidth, panelRect.top() + 6,
+                             panelRect.width() - labelWidth - 12, panelRect.height() - 12);
 
         // 绘制面板背景 - 专业示波器深色
         p.fillRect(panelRect, QColor(30, 32, 36));
@@ -62,49 +63,64 @@ void OscilloscopeWidget::paintEvent(QPaintEvent* event) {
         p.setPen(QPen(powered_[idx] ? QColor(236, 183, 0, 120) : QColor(70, 72, 78), 1));
         p.drawRect(panelRect.adjusted(0, 0, -1, -1));
 
-        // 绘制网格 - 主网格线（每5格）
-        p.setPen(QPen(QColor(55, 58, 64), 1, Qt::SolidLine));
-        for (int gy = 1; gy < 5; ++gy) {
-            const int y = plotRect.bottom() - gy * plotRect.height() / 5;
+        // 绘制次网格线（细线）
+        p.setPen(QPen(QColor(38, 40, 46), 1, Qt::SolidLine));
+        for (int gy = 1; gy < 10; ++gy) {
+            if (gy % 2 == 0) continue;
+            const int y = plotRect.bottom() - gy * plotRect.height() / 10;
             p.drawLine(plotRect.left(), y, plotRect.right(), y);
         }
         for (int gx = 1; gx < 10; ++gx) {
-            if (gx % 2 == 0) continue;
+            const int x = plotRect.left() + gx * plotRect.width() / 10;
+            p.drawLine(x, plotRect.top(), x, plotRect.bottom());
+        }
+
+        // 绘制主网格线（粗线）
+        p.setPen(QPen(QColor(55, 58, 64), 1, Qt::SolidLine));
+        for (int gy = 0; gy <= 10; ++gy) {
+            const int y = plotRect.bottom() - gy * plotRect.height() / 10;
+            p.drawLine(plotRect.left(), y, plotRect.right(), y);
+        }
+        for (int gx = 0; gx <= 10; ++gx) {
             const int x = plotRect.left() + gx * plotRect.width() / 10;
             p.drawLine(x, plotRect.top(), x, plotRect.bottom());
         }
 
         // 绘制中心网格线（更亮）
-        p.setPen(QPen(QColor(75, 78, 85), 1, Qt::SolidLine));
-        const int centerY = plotRect.top() + plotRect.height() / 2;
+        p.setPen(QPen(QColor(80, 83, 90), 1.5, Qt::SolidLine));
+        const int centerY = yForValue(2750, plotRect);
         p.drawLine(plotRect.left(), centerY, plotRect.right(), centerY);
         const int centerX = plotRect.left() + plotRect.width() / 2;
         p.drawLine(centerX, plotRect.top(), centerX, plotRect.bottom());
 
         // 绘制边框
-        p.setPen(QPen(QColor(95, 98, 105), 1));
+        p.setPen(QPen(QColor(100, 103, 110), 1));
         p.drawLine(plotRect.left(), plotRect.bottom(), plotRect.right(), plotRect.bottom());
         p.drawLine(plotRect.left(), plotRect.top(), plotRect.left(), plotRect.bottom());
         p.drawLine(plotRect.right(), plotRect.top(), plotRect.right(), plotRect.bottom());
         p.drawLine(plotRect.left(), plotRect.top(), plotRect.right(), plotRect.top());
 
         // Y轴刻度标签
-        p.setPen(QColor(140, 145, 155));
+        p.setPen(QColor(145, 150, 160));
         QFont labelFont = p.font();
-        labelFont.setPointSize(8);
+        labelFont.setPointSize(9);
         p.setFont(labelFont);
         
-        for (int mv = 0; mv <= 5000; mv += 1000) {
+        for (int mv = 0; mv <= 5500; mv += 550) {
             const int y = yForValue(mv, plotRect);
-            p.drawLine(plotRect.left(), y, plotRect.left() + 5, y);
-            p.drawText(plotRect.left() - 42, y + 4, QString::number(mv / 1000) + ".0");
+            if (y >= plotRect.top() && y <= plotRect.bottom()) {
+                p.drawLine(plotRect.left(), y, plotRect.left() + 4, y);
+                p.drawText(plotRect.left() - 38, y + 4, QString::number(mv / 1000.0, 'f', 1));
+            }
         }
         
         // X轴刻度标签
-        for (int xt = 0; xt <= 100; xt += 25) {
+        for (int xt = 0; xt <= 100; xt += 20) {
             const int x = plotRect.left() + xt * plotRect.width() / 100;
-            p.drawLine(x, plotRect.bottom(), x, plotRect.bottom() - 5);
-            p.drawText(x - 10, plotRect.bottom() + 16, QString::number(xt));
+            if (x >= plotRect.left() && x <= plotRect.right()) {
+                p.drawLine(x, plotRect.bottom(), x, plotRect.bottom() - 4);
+                p.drawText(x - 8, plotRect.bottom() + 15, QString::number(xt));
+            }
         }
 
         // 通道标签 - 带电源状态指示
@@ -152,10 +168,10 @@ void OscilloscopeWidget::paintEvent(QPaintEvent* event) {
             }
         }
 
-        // 绘制电流波形 - 带发光效果
+        // 绘制电流波形 - 带发光效果（粉红色）
         if (visibility_[idx].currentVisible) {
             // 发光效果
-            QPen glowPen(QColor(0, 200, 255, 60), 4);
+            QPen glowPen(QColor(218, 0, 102, 60), 4);
             p.setPen(glowPen);
             for (int i = 1; i < static_cast<int>(samples.size()); ++i) {
                 const int x1 = xForSampleIndex(i - 1, static_cast<int>(samples.size()), plotRect);
@@ -166,7 +182,7 @@ void OscilloscopeWidget::paintEvent(QPaintEvent* event) {
             }
             
             // 主波形线
-            p.setPen(QPen(QColor(0, 200, 255), 1.5));
+            p.setPen(QPen(QColor(218, 0, 102), 1.5));
             for (int i = 1; i < static_cast<int>(samples.size()); ++i) {
                 const int x1 = xForSampleIndex(i - 1, static_cast<int>(samples.size()), plotRect);
                 const int x2 = xForSampleIndex(i, static_cast<int>(samples.size()), plotRect);
@@ -179,40 +195,40 @@ void OscilloscopeWidget::paintEvent(QPaintEvent* event) {
         // 绘制最新数值
         const auto latest = samples.back();
         QFont valueFont = p.font();
-        valueFont.setPointSize(9);
-        valueFont.setBold(false);
+        valueFont.setPointSize(10);
+        valueFont.setBold(true);
         p.setFont(valueFont);
         
-        int textY = plotRect.top() + 14;
+        int textY = plotRect.top() + 16;
         if (visibility_[idx].voltageVisible) {
             p.setPen(QColor(247, 215, 56));
-            QString vText = QString::asprintf("%.3fV", latest.voltageMilliV / 1000.0);
-            p.drawText(plotRect.left() + 8, textY, vText);
-            textY += 16;
+            QString vText = QString::asprintf("%.2f V", latest.voltageMilliV / 1000.0);
+            p.drawText(plotRect.left() + 6, textY, vText);
+            textY += 18;
         }
         if (visibility_[idx].currentVisible) {
-            p.setPen(QColor(0, 200, 255));
-            QString aText = QString::asprintf("%.3fA", latest.currentMilliA / 1000.0);
-            p.drawText(plotRect.left() + 8, textY, aText);
+            p.setPen(QColor(218, 0, 102));
+            QString aText = QString::asprintf("%.2f A", latest.currentMilliA / 1000.0);
+            p.drawText(plotRect.left() + 6, textY, aText);
         }
 
         // 绘制图例
-        int legendX = plotRect.right() - 80;
-        int legendY = plotRect.top() + 10;
+        int legendX = plotRect.right() - 75;
+        int legendY = plotRect.top() + 12;
         
         if (visibility_[idx].voltageVisible) {
             p.setPen(QPen(QColor(247, 215, 56), 2));
-            p.drawLine(legendX, legendY + 6, legendX + 12, legendY + 6);
+            p.drawLine(legendX, legendY + 5, legendX + 14, legendY + 5);
             p.setPen(QColor(247, 215, 56));
-            p.drawText(legendX + 16, legendY + 10, "V");
+            p.drawText(legendX + 18, legendY + 9, "Voltage");
         }
         
         if (visibility_[idx].currentVisible) {
-            int offset = visibility_[idx].voltageVisible ? 25 : 0;
-            p.setPen(QPen(QColor(0, 200, 255), 1.5));
-            p.drawLine(legendX + offset, legendY + 6, legendX + 12 + offset, legendY + 6);
-            p.setPen(QColor(0, 200, 255));
-            p.drawText(legendX + 16 + offset, legendY + 10, "A");
+            int offset = visibility_[idx].voltageVisible ? 65 : 0;
+            p.setPen(QPen(QColor(218, 0, 102), 1.5));
+            p.drawLine(legendX + offset, legendY + 5, legendX + 14 + offset, legendY + 5);
+            p.setPen(QColor(218, 0, 102));
+            p.drawText(legendX + 18 + offset, legendY + 9, "Current");
         }
     }
 }
