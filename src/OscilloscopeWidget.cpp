@@ -14,6 +14,8 @@
 #include <QPen>
 #include <QDebug>
 
+
+
 QT_CHARTS_USE_NAMESPACE
 
 OscilloscopeWidget::OscilloscopeWidget(QWidget* parent)
