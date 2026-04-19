@@ -1,18 +1,34 @@
 ﻿#pragma once
+
+#include <array>
+
 #include <QWidget>
+
 #include "DataEngine.h"
-#include "TriggerEngine.h"
 
 class OscilloscopeWidget : public QWidget {
 public:
-    OscilloscopeWidget(DataEngine* e, TriggerEngine* t);
+    explicit OscilloscopeWidget(DataEngine* engine, QWidget* parent = nullptr);
+
+    void setSeriesVisible(int channel, bool voltageVisible, bool currentVisible);
+    void setChannelPowered(int channel, bool powered);
 
 protected:
-    void paintEvent(QPaintEvent*) override;
+    void paintEvent(QPaintEvent* event) override;
 
 private:
-    DataEngine* engine;
-    TriggerEngine* trigger;
-};
+    struct VisibilityState {
+        bool voltageVisible = true;
+        bool currentVisible = true;
+    };
 
-//sdsf
+    static constexpr int kChannelCount = 4;
+    static constexpr int kMaxMilliUnit = 5500;
+
+    int indexFromChannel(int channel) const;
+    int yForValue(int value, int rowTop, int rowHeight) const;
+
+    DataEngine* engine_ = nullptr;
+    std::array<VisibilityState, kChannelCount> visibility_{};
+    std::array<bool, kChannelCount> powered_{{false, false, false, false}};
+};

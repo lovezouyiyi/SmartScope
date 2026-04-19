@@ -2,14 +2,16 @@
 project(SmartScope)
 
 set(CMAKE_CXX_STANDARD 17)
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+find_package(Qt6 REQUIRED COMPONENTS Widgets SerialPort)
 
 add_executable(SmartScope
-src/main.cpp
-src/MainWindow.cpp
-src/OscilloscopeWidget.cpp
-src/DataEngine.cpp
-src/TriggerEngine.cpp
+    src/main.cpp
+    src/MainWindow.cpp
+    src/OscilloscopeWidget.cpp
+    src/DataEngine.cpp
+    src/SmartUSBHub.cpp
 )
 
-target_link_libraries(SmartScope Qt6::Widgets)
+target_link_libraries(SmartScope PRIVATE Qt6::Widgets Qt6::SerialPort)
