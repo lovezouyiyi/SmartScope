@@ -1,0 +1,40 @@
+﻿name: Build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.6.0'
+
+      - run: cmake -B build -S .
+
+      - run: cmake --build build --config Release
+
+      - name: Deploy Qt dependencies
+        run: |
+          # 鍒涘缓鍙戝竷鐩綍
+          mkdir deploy
+          
+          # 澶嶅埗鍙墽琛屾枃浠?          Copy-Item build/Release/SmartScope.exe deploy/
+          
+          # 浣跨敤 windeployqt 鎵撳寘鎵€鏈?Qt 渚濊禆
+          & "$env:QT_ROOT_DIR\bin\windeployqt.exe" --release --no-translations --no-opengl-sw deploy/SmartScope.exe
+          
+          # 鍒楀嚭鎵撳寘鍚庣殑鏂囦欢
+          Get-ChildItem deploy -Recurse | Select-Object FullName
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: SmartScope-Windows
+          path: deploy/*
+          retention-days: 30
