@@ -19,6 +19,8 @@ MainWindow::MainWindow() {
     reconnectTimer_.start(1200);
 }
 
+MainWindow::~MainWindow() = default;
+
 void MainWindow::setupUi() {
     rootWidget_ = new QWidget(this);
     auto* rootLayout = new QVBoxLayout(rootWidget_);
@@ -58,10 +60,10 @@ void MainWindow::setupUi() {
             onPowerToggled(ch, checked);
         });
 
-        connect(ui.voltageCheck, &QCheckBox::checkStateChanged, this, [this, ch](Qt::CheckState) {
+        connect(ui.voltageCheck, &QCheckBox::stateChanged, this, [this, ch](int) {
             onSeriesVisibilityChanged(ch);
         });
-        connect(ui.currentCheck, &QCheckBox::checkStateChanged, this, [this, ch](Qt::CheckState) {
+        connect(ui.currentCheck, &QCheckBox::stateChanged, this, [this, ch](int) {
             onSeriesVisibilityChanged(ch);
         });
     }

@@ -18,6 +18,7 @@ class SmartUSBHub;
 class MainWindow : public QMainWindow {
 public:
     MainWindow();
+    ~MainWindow();
 
 private:
     struct ChannelUi {
