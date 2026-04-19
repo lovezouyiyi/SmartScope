@@ -1,217 +1,299 @@
-﻿#include "OscilloscopeWidget.h"
+#include "OscilloscopeWidget.h"
 
-#include <QPainter>
-#include <QPainterPath>
+#include <QChart>
+#include <QChartView>
+#include <QLineSeries>
+#include <QValueAxis>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QCheckBox>
+#include <QPushButton>
+#include <QLabel>
+#include <QPen>
 #include <QDebug>
+
+QT_CHARTS_USE_NAMESPACE
 
 OscilloscopeWidget::OscilloscopeWidget(QWidget* parent)
     : QWidget(parent) {
-    setMinimumSize(900, 400);
+    setMinimumSize(900, 600);
     channelCount_ = kMaxChannels;
-    channels_.resize(kMaxChannels);
+    
+    // Initialize data arrays
+    voltageData_.resize(kMaxChannels);
+    currentData_.resize(kMaxChannels);
+    channelEnabled_.resize(kMaxChannels, true);
+    channelWidgets_.resize(kMaxChannels);
+    
+    for (int i = 0; i < kMaxChannels; ++i) {
+        voltageData_[i].resize(kMaxSamples, 0.0);
+        currentData_[i].resize(kMaxSamples, 0.0);
+    }
+    
+    // Main layout - vertical layout for all channels (matching Python version)
+    auto* mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(8, 8, 8, 8);
+    mainLayout->setSpacing(8);
+    
+    // Create UI for each channel - matching Python layout exactly
+    for (int ch = 0; ch < kMaxChannels; ++ch) {
+        setupChannelUI(ch);
+        
+        // Each channel gets a horizontal row layout
+        auto* rowLayout = new QHBoxLayout();
+        rowLayout->setSpacing(12);
+        
+        // Vertical layout for controls (button + checkboxes)
+        auto* controlLayout = new QVBoxLayout();
+        controlLayout->setSpacing(6);
+        controlLayout->addStretch(50);  // Add spacing at top like Python version
+        
+        // Add button
+        controlLayout->addWidget(channelWidgets_[ch].button);
+        
+        // Add checkboxes
+        controlLayout->addWidget(channelWidgets_[ch].voltageCheck);
+        controlLayout->addWidget(channelWidgets_[ch].currentCheck);
+        
+        // Add labels if they exist in the struct (need to be added to header/struct)
+        if (channelWidgets_[ch].voltageLabel) {
+            controlLayout->addWidget(channelWidgets_[ch].voltageLabel);
+        }
+        if (channelWidgets_[ch].currentLabel) {
+            controlLayout->addWidget(channelWidgets_[ch].currentLabel);
+        }
+        
+        rowLayout->addLayout(controlLayout);
+        
+        // Add chart view (takes most space)
+        rowLayout->addWidget(channelWidgets_[ch].chartView, 1);
+        
+        mainLayout->addLayout(rowLayout);
+    }
+}
+
+OscilloscopeWidget::~OscilloscopeWidget() {
+}
+
+void OscilloscopeWidget::setupChannelUI(int channelIdx) {
+    auto& widgets = channelWidgets_[channelIdx];
+    
+    // Create button for channel toggle - matching Python version
+    widgets.button = new QPushButton(QString("Channel %1").arg(channelIdx + 1), this);
+    widgets.button->setCheckable(true);
+    widgets.button->setChecked(true);
+    widgets.button->setFixedWidth(100);
+    connect(widgets.button, &QPushButton::clicked, this, [this, channelIdx]() {
+        toggleChannel(channelIdx);
+    });
+    
+    // Create checkboxes for voltage/current visibility - matching Python version
+    widgets.voltageCheck = new QCheckBox("Voltage", this);
+    widgets.voltageCheck->setChecked(true);
+    connect(widgets.voltageCheck, &QCheckBox::stateChanged, this, [this, channelIdx](int state) {
+        toggleCurve(channelIdx, "voltage");
+    });
+    
+    widgets.currentCheck = new QCheckBox("Current", this);
+    widgets.currentCheck->setChecked(true);
+    connect(widgets.currentCheck, &QCheckBox::stateChanged, this, [this, channelIdx](int state) {
+        toggleCurve(channelIdx, "current");
+    });
+    
+    // Create labels for displaying values - matching Python version
+    widgets.voltageLabel = new QLabel("-- V", this);
+    widgets.voltageLabel->setStyleSheet("color: rgb(255, 255, 0); font-weight: bold;");
+    widgets.voltageLabel->setMinimumWidth(80);
+    
+    widgets.currentLabel = new QLabel("-- A", this);
+    widgets.currentLabel->setStyleSheet("color: rgb(218, 0, 102); font-weight: bold;");
+    widgets.currentLabel->setMinimumWidth(80);
+    
+    // Create chart and series - matching Python PlotWidget
+    QChart* chart = new QChart();
+    chart->setBackgroundBrush(QBrush(QColor(20, 22, 26)));
+    chart->setPlotAreaBackgroundBrush(QBrush(QColor(30, 32, 36)));
+    chart->setPlotAreaBackgroundVisible(true);
+    chart->legend()->setVisible(false);
+    
+    // Voltage series - yellow (matching Python color: 255, 255, 0)
+    widgets.voltageSeries = new QLineSeries();
+    widgets.voltageSeries->setName("Voltage");
+    QPen voltagePen(QColor(255, 255, 0));
+    voltagePen.setWidth(2);
+    widgets.voltageSeries->setPen(voltagePen);
+    chart->addSeries(widgets.voltageSeries);
+    
+    // Current series - pink/magenta (matching Python color: 218, 0, 102)
+    widgets.currentSeries = new QLineSeries();
+    widgets.currentSeries->setName("Current");
+    QPen currentPen(QColor(218, 0, 102));
+    currentPen.setWidth(2);
+    widgets.currentSeries->setPen(currentPen);
+    chart->addSeries(widgets.currentSeries);
+    
+    // X axis - sample index (0-99)
+    widgets.axisX = new QValueAxis();
+    widgets.axisX->setRange(0, kMaxSamples - 1);
+    widgets.axisX->setLabelFormat("%d");
+    widgets.axisX->setTitleText("Sample");
+    widgets.axisX->setGridLineVisible(true);
+    widgets.axisX->setGridLineColor(QColor(50, 52, 58));
+    widgets.axisX->setLabelsColor(QColor(160, 165, 175));
+    chart->addAxis(widgets.axisX, Qt::AlignBottom);
+    widgets.voltageSeries->attachAxis(widgets.axisX);
+    widgets.currentSeries->attachAxis(widgets.axisX);
+    
+    // Y axis - voltage/current range (0-5500 mV) - matching Python YRange(0, 5500)
+    widgets.axisY = new QValueAxis();
+    widgets.axisY->setRange(0, 5500);
+    widgets.axisY->setLabelFormat("%d");
+    widgets.axisY->setTitleText("mV / mA");
+    widgets.axisY->setGridLineVisible(true);
+    widgets.axisY->setGridLineColor(QColor(50, 52, 58));
+    widgets.axisY->setLabelsColor(QColor(160, 165, 175));
+    chart->addAxis(widgets.axisY, Qt::AlignLeft);
+    widgets.voltageSeries->attachAxis(widgets.axisY);
+    widgets.currentSeries->attachAxis(widgets.axisY);
+    
+    // Create chart view - matching Python PlotWidget
+    widgets.chartView = new QChartView(chart, this);
+    widgets.chartView->setRenderHint(QPainter::Antialiasing);
+    widgets.chartView->setBackgroundBrush(QBrush(QColor(45, 47, 52)));
+    widgets.chartView->setMinimumHeight(150);
 }
 
 void OscilloscopeWidget::setChannelCount(int count) {
     channelCount_ = qBound(1, count, kMaxChannels);
-    channels_.resize(kMaxChannels);
-    for (int i = 0; i < kMaxChannels; ++i) {
-        channels_[i].voltageHistory.resize(kMaxSamples);
-        channels_[i].currentHistory.resize(kMaxSamples);
-    }
     update();
 }
 
 void OscilloscopeWidget::setChannelEnabled(int channel, bool enabled) {
     if (channel >= 0 && channel < kMaxChannels) {
-        channels_[channel].enabled = enabled;
-        update();
+        channelEnabled_[channel] = enabled;
+        if (channelWidgets_[channel].button) {
+            channelWidgets_[channel].button->setEnabled(enabled);
+        }
     }
 }
 
 void OscilloscopeWidget::setSeriesVisible(int channel, bool voltageVisible, bool currentVisible) {
     if (channel >= 0 && channel < kMaxChannels) {
-        channels_[channel].voltageVisible = voltageVisible;
-        channels_[channel].currentVisible = currentVisible;
-        update();
+        auto& widgets = channelWidgets_[channel];
+        if (widgets.voltageCheck) {
+            widgets.voltageCheck->setChecked(voltageVisible);
+        }
+        if (widgets.currentCheck) {
+            widgets.currentCheck->setChecked(currentVisible);
+        }
+        if (widgets.voltageSeries) {
+            widgets.voltageSeries->setVisible(voltageVisible);
+        }
+        if (widgets.currentSeries) {
+            widgets.currentSeries->setVisible(currentVisible);
+        }
     }
 }
 
 void OscilloscopeWidget::updateVoltage(int channel, int milliVolt) {
     if (channel >= 0 && channel < kMaxChannels) {
-        auto& data = channels_[channel];
-        // Roll left and insert new value at end
+        // Roll data left and add new value at end - matching Python np.roll
+        auto& data = voltageData_[channel];
         for (int i = 0; i < kMaxSamples - 1; ++i) {
-            data.voltageHistory[i] = data.voltageHistory[i + 1];
+            data[i] = data[i + 1];
         }
-        data.voltageHistory[kMaxSamples - 1] = milliVolt;
-        update();
+        data[kMaxSamples - 1] = static_cast<double>(milliVolt);
+        
+        // Update label - matching Python format
+        auto& widgets = channelWidgets_[channel];
+        if (widgets.voltageLabel) {
+            double volts = milliVolt / 1000.0;
+            widgets.voltageLabel->setText(QString::asprintf("%.3f V", volts));
+        }
+        
+        // Update chart series
+        updateChartData(channel);
     }
 }
 
 void OscilloscopeWidget::updateCurrent(int channel, int milliAmp) {
     if (channel >= 0 && channel < kMaxChannels) {
-        auto& data = channels_[channel];
-        // Roll left and insert new value at end
+        // Roll data left and add new value at end - matching Python np.roll
+        auto& data = currentData_[channel];
         for (int i = 0; i < kMaxSamples - 1; ++i) {
-            data.currentHistory[i] = data.currentHistory[i + 1];
+            data[i] = data[i + 1];
         }
-        data.currentHistory[kMaxSamples - 1] = milliAmp;
-        update();
+        data[kMaxSamples - 1] = static_cast<double>(milliAmp);
+        
+        // Update label - matching Python format
+        auto& widgets = channelWidgets_[channel];
+        if (widgets.currentLabel) {
+            double amps = milliAmp / 1000.0;
+            widgets.currentLabel->setText(QString::asprintf("%.3f A", amps));
+        }
+        
+        // Update chart series
+        updateChartData(channel);
     }
 }
 
 void OscilloscopeWidget::setChannelPowered(int channel, bool powered) {
     if (channel >= 0 && channel < kMaxChannels) {
-        channels_[channel].powered = powered;
-        update();
+        auto& widgets = channelWidgets_[channel];
+        if (widgets.button) {
+            // Change button appearance based on power state - matching Python
+            if (powered) {
+                widgets.button->setStyleSheet(
+                    "QPushButton { background-color: #e9b507; color: #1a1a1a; font-weight: bold; border: 1px solid #f0c63c; border-radius: 6px; padding: 6px 12px; }"
+                    "QPushButton:hover { background-color: #f0c63c; }"
+                );
+            } else {
+                widgets.button->setStyleSheet(
+                    "QPushButton { background-color: #6f7278; color: #f1f1f1; border: 1px solid #80848a; border-radius: 6px; padding: 6px 12px; }"
+                    "QPushButton:hover { background-color: #7d8086; }"
+                );
+            }
+        }
     }
 }
 
-void OscilloscopeWidget::paintEvent(QPaintEvent* event) {
-    QWidget::paintEvent(event);
+void OscilloscopeWidget::toggleChannel(int channelIdx) {
+    // Toggle channel power state - this signal should be handled by MainWindow
+    emit channelPowerToggled(channelIdx + 1, channelWidgets_[channelIdx].button->isChecked());
+}
 
-    QPainter p(this);
-    p.setRenderHint(QPainter::Antialiasing, true);
-    p.setRenderHint(QPainter::TextAntialiasing, true);
-
-    // Background - dark theme like Python version
-    p.fillRect(rect(), QColor(50, 52, 58));
-
-    const int w = width();
-    const int h = height();
-    if (w <= 0 || h <= 0) return;
-
-    // Layout: each channel is a row
-    // Channel rows are separated horizontally
-    const int rowGap = 8;
-    const int totalGap = rowGap * (channelCount_ + 1);
-    const int rowH = (h - totalGap) / channelCount_;
-
-    for (int ch = 0; ch < channelCount_; ++ch) {
-        const int rowTop = rowGap + ch * (rowH + rowGap);
-        QRect rowRect(8, rowTop, w - 16, rowH);
-        drawChannel(p, ch, rowRect);
+void OscilloscopeWidget::toggleCurve(int channelIdx, const QString& dataType) {
+    auto& widgets = channelWidgets_[channelIdx];
+    
+    if (dataType == "voltage") {
+        bool visible = widgets.voltageCheck->isChecked();
+        if (widgets.voltageSeries) {
+            widgets.voltageSeries->setVisible(visible);
+        }
+    } else if (dataType == "current") {
+        bool visible = widgets.currentCheck->isChecked();
+        if (widgets.currentSeries) {
+            widgets.currentSeries->setVisible(visible);
+        }
     }
 }
 
-void OscilloscopeWidget::drawChannel(QPainter& p, int channel, const QRect& rect) {
-    if (!channels_[channel].enabled) return;
-
-    const auto& data = channels_[channel];
-
-    // Row background - slightly lighter
-    p.fillRect(rect, QColor(45, 47, 52));
-
-    // Row border
-    p.setPen(QPen(QColor(70, 72, 78), 1));
-    p.drawRect(rect.adjusted(0, 0, -1, -1));
-
-    // Plot area - black background
-    QRect plotRect(rect.left() + 8, rect.top() + 4, rect.width() - 16, rect.height() - 8);
-    p.fillRect(plotRect, QColor(20, 22, 26));
-
-    // Plot border
-    p.setPen(QPen(QColor(80, 82, 88), 1));
-    p.drawRect(plotRect.adjusted(0, 0, -1, -1));
-
-    // Y-axis range labels (left side)
-    p.setPen(QColor(160, 165, 175));
-    QFont labelFont = p.font();
-    labelFont.setPixelSize(10);
-    p.setFont(labelFont);
-
-    // Draw Y-axis labels: 5.5V at top, 0V at bottom
-    const int labelPadding = 6;
-    p.drawText(plotRect.left() - 28, plotRect.top() + 12, "5.5V");
-    p.drawText(plotRect.left() - 28, plotRect.bottom() + 4, "0V");
-
-    // Center line (at 2.75V)
-    const int centerY = plotRect.bottom() - (kMaxMilliUnit / 2) * plotRect.height() / kMaxMilliUnit;
-    p.setPen(QPen(QColor(60, 63, 70), 1, Qt::DashLine));
-    p.drawLine(plotRect.left(), centerY, plotRect.right(), centerY);
-
-    // X-axis labels at bottom
-    p.drawText(plotRect.left() - 4, plotRect.bottom() + 14, "0");
-    p.drawText(plotRect.center().x() - 4, plotRect.bottom() + 14, "50");
-    p.drawText(plotRect.right() - 10, plotRect.bottom() + 14, "100");
-
-    // Grid lines
-    p.setPen(QPen(QColor(50, 52, 58), 1));
-    // Horizontal grid (5 divisions)
-    for (int i = 1; i < 5; ++i) {
-        int y = plotRect.bottom() - i * plotRect.height() / 5;
-        p.drawLine(plotRect.left(), y, plotRect.right(), y);
-    }
-    // Vertical grid (10 divisions)
-    for (int i = 1; i < 10; ++i) {
-        int x = plotRect.left() + i * plotRect.width() / 10;
-        p.drawLine(x, plotRect.top(), x, plotRect.bottom());
-    }
-
-    // Draw waveforms
-    if (data.voltageHistory.size() >= 2 && data.voltageVisible) {
-        // Voltage waveform - yellow
-        QPen glowPen(QColor(255, 255, 0, 40), 4);
-        p.setPen(glowPen);
-        for (int i = 1; i < data.voltageHistory.size(); ++i) {
-            int x1 = plotRect.left() + (i - 1) * plotRect.width() / (data.voltageHistory.size() - 1);
-            int x2 = plotRect.left() + i * plotRect.width() / (data.voltageHistory.size() - 1);
-            int y1 = plotRect.bottom() - data.voltageHistory[i - 1] * plotRect.height() / kMaxMilliUnit;
-            int y2 = plotRect.bottom() - data.voltageHistory[i] * plotRect.height() / kMaxMilliUnit;
-            p.drawLine(x1, y1, x2, y2);
+void OscilloscopeWidget::updateChartData(int channelIdx) {
+    auto& widgets = channelWidgets_[channelIdx];
+    
+    // Update voltage series
+    if (widgets.voltageSeries) {
+        widgets.voltageSeries->clear();
+        for (int i = 0; i < kMaxSamples; ++i) {
+            widgets.voltageSeries->append(i, voltageData_[channelIdx][i]);
         }
-
-        QPen mainPen(QColor(255, 255, 0), 1.5);
-        p.setPen(mainPen);
-        for (int i = 1; i < data.voltageHistory.size(); ++i) {
-            int x1 = plotRect.left() + (i - 1) * plotRect.width() / (data.voltageHistory.size() - 1);
-            int x2 = plotRect.left() + i * plotRect.width() / (data.voltageHistory.size() - 1);
-            int y1 = plotRect.bottom() - data.voltageHistory[i - 1] * plotRect.height() / kMaxMilliUnit;
-            int y2 = plotRect.bottom() - data.voltageHistory[i] * plotRect.height() / kMaxMilliUnit;
-            p.drawLine(x1, y1, x2, y2);
-        }
-
-        // Voltage label on waveform
-        int lastV = data.voltageHistory.last();
-        int labelY = plotRect.bottom() - lastV * plotRect.height() / kMaxMilliUnit;
-        p.setPen(QColor(255, 255, 0));
-        p.drawText(plotRect.left() + 8, labelY - 8, QString::asprintf("%.3f V", lastV / 1000.0));
     }
-
-    if (data.currentHistory.size() >= 2 && data.currentVisible) {
-        // Current waveform - pink/magenta
-        QPen glowPen(QColor(218, 0, 102, 40), 4);
-        p.setPen(glowPen);
-        for (int i = 1; i < data.currentHistory.size(); ++i) {
-            int x1 = plotRect.left() + (i - 1) * plotRect.width() / (data.currentHistory.size() - 1);
-            int x2 = plotRect.left() + i * plotRect.width() / (data.currentHistory.size() - 1);
-            int y1 = plotRect.bottom() - data.currentHistory[i - 1] * plotRect.height() / kMaxMilliUnit;
-            int y2 = plotRect.bottom() - data.currentHistory[i] * plotRect.height() / kMaxMilliUnit;
-            p.drawLine(x1, y1, x2, y2);
+    
+    // Update current series
+    if (widgets.currentSeries) {
+        widgets.currentSeries->clear();
+        for (int i = 0; i < kMaxSamples; ++i) {
+            widgets.currentSeries->append(i, currentData_[channelIdx][i]);
         }
-
-        QPen mainPen(QColor(218, 0, 102), 1.5);
-        p.setPen(mainPen);
-        for (int i = 1; i < data.currentHistory.size(); ++i) {
-            int x1 = plotRect.left() + (i - 1) * plotRect.width() / (data.currentHistory.size() - 1);
-            int x2 = plotRect.left() + i * plotRect.width() / (data.currentHistory.size() - 1);
-            int y1 = plotRect.bottom() - data.currentHistory[i - 1] * plotRect.height() / kMaxMilliUnit;
-            int y2 = plotRect.bottom() - data.currentHistory[i] * plotRect.height() / kMaxMilliUnit;
-            p.drawLine(x1, y1, x2, y2);
-        }
-
-        // Current label on waveform
-        int lastI = data.currentHistory.last();
-        int labelY = plotRect.bottom() - lastI * plotRect.height() / kMaxMilliUnit;
-        p.setPen(QColor(218, 0, 102));
-        p.drawText(plotRect.left() + 8, labelY + 14, QString::asprintf("%.3f A", lastI / 1000.0));
     }
-
-    // Channel label (top-left of plot area)
-    p.setPen(data.powered ? QColor(255, 220, 50) : QColor(130, 135, 145));
-    QFont chFont = p.font();
-    chFont.setPixelSize(11);
-    chFont.setBold(true);
-    p.setFont(chFont);
-    p.drawText(plotRect.left() + 8, plotRect.top() + 14, QString("Channel %1").arg(channel + 1));
 }

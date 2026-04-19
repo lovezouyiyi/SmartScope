@@ -1,10 +1,9 @@
-﻿#pragma once
+#pragma once
 
 #include <array>
 #include <memory>
 #include <optional>
 
-#include <QCheckBox>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMainWindow>
@@ -21,14 +20,6 @@ public:
     ~MainWindow();
 
 private:
-    struct ChannelUi {
-        QPushButton* powerButton = nullptr;
-        QCheckBox* voltageCheck = nullptr;
-        QCheckBox* currentCheck = nullptr;
-        QLabel* voltageLabel = nullptr;
-        QLabel* currentLabel = nullptr;
-    };
-
     static constexpr int kChannelCount = 4;
 
     void setupUi();
@@ -38,7 +29,6 @@ private:
     void onConnectClicked();
 
     void onPowerToggled(int channel, bool checked);
-    void onSeriesVisibilityChanged(int channel);
 
     void updateConnectionText();
     void updateChannelUiValues(int channel, std::optional<int> power, std::optional<int> voltage, std::optional<int> current);
@@ -51,7 +41,6 @@ private:
     QPushButton* connectButton_ = nullptr;
     OscilloscopeWidget* oscilloscope_ = nullptr;
 
-    std::array<ChannelUi, kChannelCount> channelUi_{};
     std::array<std::optional<int>, kChannelCount> latestVoltage_{};
     std::array<std::optional<int>, kChannelCount> latestCurrent_{};
 
