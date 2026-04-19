@@ -36,7 +36,7 @@ void OscilloscopeWidget::paintEvent(QPaintEvent* event) {
 
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing, true);
-    p.fillRect(rect(), QColor(58, 60, 66));
+    p.fillRect(rect(), QColor(45, 47, 52));
 
     const int w = width();
     const int h = height();
@@ -44,7 +44,7 @@ void OscilloscopeWidget::paintEvent(QPaintEvent* event) {
         return;
     }
 
-    const int rowGap = 10;
+    const int rowGap = 8;
     const int totalGap = rowGap * (kChannelCount + 1);
     const int rowH = (h - totalGap) / kChannelCount;
 
@@ -52,49 +52,97 @@ void OscilloscopeWidget::paintEvent(QPaintEvent* event) {
         const int idx = ch - 1;
         const int rowTop = rowGap + idx * (rowH + rowGap);
         const QRect panelRect(10, rowTop, w - 20, rowH);
-        const QRect plotRect(panelRect.left() + 62, panelRect.top() + 10,
-                             panelRect.width() - 80, panelRect.height() - 28);
+        const QRect plotRect(panelRect.left() + 70, panelRect.top() + 8,
+                             panelRect.width() - 88, panelRect.height() - 24);
 
-        p.fillRect(panelRect, QColor(0, 0, 0));
-        p.setPen(QPen(QColor(95, 95, 95), 1));
+        // 绘制面板背景 - 专业示波器深色
+        p.fillRect(panelRect, QColor(30, 32, 36));
+        
+        // 面板边框
+        p.setPen(QPen(powered_[idx] ? QColor(236, 183, 0, 120) : QColor(70, 72, 78), 1));
         p.drawRect(panelRect.adjusted(0, 0, -1, -1));
 
-        p.setPen(QPen(QColor(80, 80, 80), 1));
-        p.drawLine(plotRect.left(), plotRect.bottom(), plotRect.right(), plotRect.bottom());
-        p.drawLine(plotRect.left(), plotRect.top(), plotRect.left(), plotRect.bottom());
-
-        p.setPen(QPen(QColor(45, 45, 45), 1));
-        for (int gy = 1; gy < 10; ++gy) {
-            const int y = plotRect.bottom() - gy * plotRect.height() / 10;
+        // 绘制网格 - 主网格线（每5格）
+        p.setPen(QPen(QColor(55, 58, 64), 1, Qt::SolidLine));
+        for (int gy = 1; gy < 5; ++gy) {
+            const int y = plotRect.bottom() - gy * plotRect.height() / 5;
             p.drawLine(plotRect.left(), y, plotRect.right(), y);
         }
         for (int gx = 1; gx < 10; ++gx) {
+            if (gx % 2 == 0) continue;
             const int x = plotRect.left() + gx * plotRect.width() / 10;
             p.drawLine(x, plotRect.top(), x, plotRect.bottom());
         }
 
-        p.setPen(QColor(165, 165, 165));
+        // 绘制中心网格线（更亮）
+        p.setPen(QPen(QColor(75, 78, 85), 1, Qt::SolidLine));
+        const int centerY = plotRect.top() + plotRect.height() / 2;
+        p.drawLine(plotRect.left(), centerY, plotRect.right(), centerY);
+        const int centerX = plotRect.left() + plotRect.width() / 2;
+        p.drawLine(centerX, plotRect.top(), centerX, plotRect.bottom());
+
+        // 绘制边框
+        p.setPen(QPen(QColor(95, 98, 105), 1));
+        p.drawLine(plotRect.left(), plotRect.bottom(), plotRect.right(), plotRect.bottom());
+        p.drawLine(plotRect.left(), plotRect.top(), plotRect.left(), plotRect.bottom());
+        p.drawLine(plotRect.right(), plotRect.top(), plotRect.right(), plotRect.bottom());
+        p.drawLine(plotRect.left(), plotRect.top(), plotRect.right(), plotRect.top());
+
+        // Y轴刻度标签
+        p.setPen(QColor(140, 145, 155));
+        QFont labelFont = p.font();
+        labelFont.setPointSize(8);
+        p.setFont(labelFont);
+        
         for (int mv = 0; mv <= 5000; mv += 1000) {
             const int y = yForValue(mv, plotRect);
-            p.drawLine(plotRect.left(), y, plotRect.left() + 4, y);
-            p.drawText(plotRect.left() - 40, y + 4, QString::number(mv));
+            p.drawLine(plotRect.left(), y, plotRect.left() + 5, y);
+            p.drawText(plotRect.left() - 42, y + 4, QString::number(mv / 1000) + ".0");
         }
-        for (int xt = 0; xt <= 100; xt += 20) {
+        
+        // X轴刻度标签
+        for (int xt = 0; xt <= 100; xt += 25) {
             const int x = plotRect.left() + xt * plotRect.width() / 100;
-            p.drawLine(x, plotRect.bottom(), x, plotRect.bottom() - 4);
-            p.drawText(x - 8, plotRect.bottom() + 16, QString::number(xt));
+            p.drawLine(x, plotRect.bottom(), x, plotRect.bottom() - 5);
+            p.drawText(x - 10, plotRect.bottom() + 16, QString::number(xt));
         }
 
-        p.setPen(powered_[idx] ? QColor(236, 183, 0) : QColor(128, 128, 128));
-        p.drawText(panelRect.left() + 8, panelRect.top() + 18, QString("Channel %1").arg(ch));
+        // 通道标签 - 带电源状态指示
+        QFont chFont = p.font();
+        chFont.setPointSize(9);
+        chFont.setBold(true);
+        p.setFont(chFont);
+        
+        QRect chLabelRect(panelRect.left() + 8, panelRect.top() + 6, 54, 18);
+        if (powered_[idx]) {
+            p.fillRect(chLabelRect, QColor(236, 183, 0, 40));
+            p.setPen(QColor(236, 183, 0));
+        } else {
+            p.fillRect(chLabelRect, QColor(80, 82, 88, 60));
+            p.setPen(QColor(120, 125, 135));
+        }
+        p.drawText(chLabelRect, Qt::AlignCenter, QString("CH%1").arg(ch));
 
         const auto samples = engine_->samples(ch);
         if (samples.size() < 2) {
             continue;
         }
 
+        // 绘制电压波形 - 带发光效果
         if (visibility_[idx].voltageVisible) {
-            p.setPen(QPen(QColor(247, 215, 56), 1.8));
+            // 发光效果
+            QPen glowPen(QColor(247, 215, 56, 60), 4);
+            p.setPen(glowPen);
+            for (int i = 1; i < static_cast<int>(samples.size()); ++i) {
+                const int x1 = xForSampleIndex(i - 1, static_cast<int>(samples.size()), plotRect);
+                const int x2 = xForSampleIndex(i, static_cast<int>(samples.size()), plotRect);
+                const int y1 = yForValue(samples[i - 1].voltageMilliV, plotRect);
+                const int y2 = yForValue(samples[i].voltageMilliV, plotRect);
+                p.drawLine(x1, y1, x2, y2);
+            }
+            
+            // 主波形线
+            p.setPen(QPen(QColor(247, 215, 56), 2));
             for (int i = 1; i < static_cast<int>(samples.size()); ++i) {
                 const int x1 = xForSampleIndex(i - 1, static_cast<int>(samples.size()), plotRect);
                 const int x2 = xForSampleIndex(i, static_cast<int>(samples.size()), plotRect);
@@ -104,8 +152,21 @@ void OscilloscopeWidget::paintEvent(QPaintEvent* event) {
             }
         }
 
+        // 绘制电流波形 - 带发光效果
         if (visibility_[idx].currentVisible) {
-            p.setPen(QPen(QColor(218, 0, 102), 1.2));
+            // 发光效果
+            QPen glowPen(QColor(0, 200, 255, 60), 4);
+            p.setPen(glowPen);
+            for (int i = 1; i < static_cast<int>(samples.size()); ++i) {
+                const int x1 = xForSampleIndex(i - 1, static_cast<int>(samples.size()), plotRect);
+                const int x2 = xForSampleIndex(i, static_cast<int>(samples.size()), plotRect);
+                const int y1 = yForValue(samples[i - 1].currentMilliA, plotRect);
+                const int y2 = yForValue(samples[i].currentMilliA, plotRect);
+                p.drawLine(x1, y1, x2, y2);
+            }
+            
+            // 主波形线
+            p.setPen(QPen(QColor(0, 200, 255), 1.5));
             for (int i = 1; i < static_cast<int>(samples.size()); ++i) {
                 const int x1 = xForSampleIndex(i - 1, static_cast<int>(samples.size()), plotRect);
                 const int x2 = xForSampleIndex(i, static_cast<int>(samples.size()), plotRect);
@@ -115,16 +176,43 @@ void OscilloscopeWidget::paintEvent(QPaintEvent* event) {
             }
         }
 
+        // 绘制最新数值
         const auto latest = samples.back();
+        QFont valueFont = p.font();
+        valueFont.setPointSize(9);
+        valueFont.setBold(false);
+        p.setFont(valueFont);
+        
+        int textY = plotRect.top() + 14;
         if (visibility_[idx].voltageVisible) {
             p.setPen(QColor(247, 215, 56));
-            p.drawText(plotRect.left() + 6, plotRect.top() + 16,
-                       QString::asprintf("%.3f V", latest.voltageMilliV / 1000.0));
+            QString vText = QString::asprintf("%.3fV", latest.voltageMilliV / 1000.0);
+            p.drawText(plotRect.left() + 8, textY, vText);
+            textY += 16;
         }
         if (visibility_[idx].currentVisible) {
-            p.setPen(QColor(218, 0, 102));
-            p.drawText(plotRect.left() + 6, plotRect.top() + 34,
-                       QString::asprintf("%.3f A", latest.currentMilliA / 1000.0));
+            p.setPen(QColor(0, 200, 255));
+            QString aText = QString::asprintf("%.3fA", latest.currentMilliA / 1000.0);
+            p.drawText(plotRect.left() + 8, textY, aText);
+        }
+
+        // 绘制图例
+        int legendX = plotRect.right() - 80;
+        int legendY = plotRect.top() + 10;
+        
+        if (visibility_[idx].voltageVisible) {
+            p.setPen(QPen(QColor(247, 215, 56), 2));
+            p.drawLine(legendX, legendY + 6, legendX + 12, legendY + 6);
+            p.setPen(QColor(247, 215, 56));
+            p.drawText(legendX + 16, legendY + 10, "V");
+        }
+        
+        if (visibility_[idx].currentVisible) {
+            int offset = visibility_[idx].voltageVisible ? 25 : 0;
+            p.setPen(QPen(QColor(0, 200, 255), 1.5));
+            p.drawLine(legendX + offset, legendY + 6, legendX + 12 + offset, legendY + 6);
+            p.setPen(QColor(0, 200, 255));
+            p.drawText(legendX + 16 + offset, legendY + 10, "A");
         }
     }
 }
