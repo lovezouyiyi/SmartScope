@@ -31,38 +31,48 @@ OscilloscopeWidget::OscilloscopeWidget(QWidget* parent)
         channels_[i].currentHistory.resize(kMaxSamples, 0);
     }
     
-    // Main layout - vertical layout for all channels (matching Python version)
-    auto* mainLayout = new QVBoxLayout(this);
+    // Main layout - horizontal layout with left panel and right charts (matching Python version exactly)
+    auto* mainLayout = new QHBoxLayout(this);
     mainLayout->setContentsMargins(8, 8, 8, 8);
-    mainLayout->setSpacing(8);
+    mainLayout->setSpacing(12);
     
-    // Create UI for each channel - matching Python layout exactly
+    // Left panel - vertical layout for all channel controls
+    auto* leftPanel = new QVBoxLayout();
+    leftPanel->setSpacing(12);
+    leftPanel->addStretch();  // Top spacing
+    
+    // Create UI for each channel
     for (int ch = 0; ch < kMaxChannels; ++ch) {
         setupChannelUI(ch);
         
-        // Each channel gets a horizontal row layout
-        auto* rowLayout = new QHBoxLayout();
-        rowLayout->setSpacing(12);
-        
-        // Vertical layout for controls (button + checkboxes)
-        auto* controlLayout = new QVBoxLayout();
-        controlLayout->setSpacing(6);
-        controlLayout->addStretch(50);  // Add spacing at top like Python version
+        // Each channel control group
+        auto* channelControlLayout = new QVBoxLayout();
+        channelControlLayout->setSpacing(4);
         
         // Add button
-        controlLayout->addWidget(channelWidgets_[ch].button);
+        channelControlLayout->addWidget(channelWidgets_[ch].button);
+        channelControlLayout->addSpacing(4);
         
         // Add checkboxes
-        controlLayout->addWidget(channelWidgets_[ch].voltageCheck);
-        controlLayout->addWidget(channelWidgets_[ch].currentCheck);
+        channelControlLayout->addWidget(channelWidgets_[ch].voltageCheck);
+        channelControlLayout->addWidget(channelWidgets_[ch].currentCheck);
         
-        rowLayout->addLayout(controlLayout);
-        
-        // Add chart view (takes most space)
-        rowLayout->addWidget(channelWidgets_[ch].chartView, 1);
-        
-        mainLayout->addLayout(rowLayout);
+        leftPanel->addLayout(channelControlLayout);
+        leftPanel->addSpacing(8);
     }
+    
+    leftPanel->addStretch();  // Bottom spacing
+    mainLayout->addLayout(leftPanel);
+    
+    // Right panel - vertical layout for all charts
+    auto* rightPanel = new QVBoxLayout();
+    rightPanel->setSpacing(8);
+    
+    for (int ch = 0; ch < kMaxChannels; ++ch) {
+        rightPanel->addWidget(channelWidgets_[ch].chartView, 1);
+    }
+    
+    mainLayout->addLayout(rightPanel, 1);
 }
 
 OscilloscopeWidget::~OscilloscopeWidget() {
@@ -71,24 +81,53 @@ OscilloscopeWidget::~OscilloscopeWidget() {
 void OscilloscopeWidget::setupChannelUI(int channelIdx) {
     auto& widgets = channelWidgets_[channelIdx];
     
-    // Create button for channel toggle - matching Python version
+    // Create button for channel toggle - matching Python version style
     widgets.button = new QPushButton(QString("Channel %1").arg(channelIdx + 1), this);
     widgets.button->setCheckable(true);
     widgets.button->setChecked(true);
-    widgets.button->setFixedWidth(100);
+    widgets.button->setFixedWidth(110);
+    widgets.button->setStyleSheet(
+        "QPushButton { "
+        "  background-color: #6f7278; "
+        "  color: #f1f1f1; "
+        "  border: none; "
+        "  border-radius: 6px; "
+        "  padding: 6px 12px; "
+        "  font-weight: bold;"
+        "}"
+        "QPushButton:checked { "
+        "  background-color: #e9b507; "
+        "  color: #1a1a1a; "
+        "}"
+        "QPushButton:hover { "
+        "  background-color: #7d8086; "
+        "}"
+    );
     connect(widgets.button, &QPushButton::clicked, this, [this, channelIdx]() {
         toggleChannel(channelIdx);
     });
     
-    // Create checkboxes for voltage/current visibility - matching Python version
-    widgets.voltageCheck = new QCheckBox("Voltage", this);
+    // Create checkboxes for voltage/current visibility - matching Python version style
+    widgets.voltageCheck = new QCheckBox(" Voltage", this);
     widgets.voltageCheck->setChecked(true);
+    widgets.voltageCheck->setStyleSheet(
+        "QCheckBox { color: #d8d8d8; spacing: 5px; }"
+        "QCheckBox::indicator { width: 16px; height: 16px; border-radius: 3px; }"
+        "QCheckBox::indicator:unchecked { background: #2a2d33; border: 1px solid #80848a; }"
+        "QCheckBox::indicator:checked { background: #e9b507; border: 1px solid #f0c63c; }"
+    );
     connect(widgets.voltageCheck, &QCheckBox::stateChanged, this, [this, channelIdx](int state) {
         toggleCurve(channelIdx, "voltage");
     });
     
-    widgets.currentCheck = new QCheckBox("Current", this);
+    widgets.currentCheck = new QCheckBox(" Current", this);
     widgets.currentCheck->setChecked(true);
+    widgets.currentCheck->setStyleSheet(
+        "QCheckBox { color: #d8d8d8; spacing: 5px; }"
+        "QCheckBox::indicator { width: 16px; height: 16px; border-radius: 3px; }"
+        "QCheckBox::indicator:unchecked { background: #2a2d33; border: 1px solid #80848a; }"
+        "QCheckBox::indicator:checked { background: #e9b507; border: 1px solid #f0c63c; }"
+    );
     connect(widgets.currentCheck, &QCheckBox::stateChanged, this, [this, channelIdx](int state) {
         toggleCurve(channelIdx, "current");
     });
@@ -102,12 +141,16 @@ void OscilloscopeWidget::setupChannelUI(int channelIdx) {
     widgets.currentLabel->setStyleSheet("color: rgb(218, 0, 102); font-weight: bold;");
     widgets.currentLabel->setMinimumWidth(80);
     
-    // Create chart and series - matching Python PlotWidget
+    // Create chart and series - matching Python PlotWidget exactly
     QChart* chart = new QChart();
-    chart->setBackgroundBrush(QBrush(QColor(20, 22, 26)));
-    chart->setPlotAreaBackgroundBrush(QBrush(QColor(30, 32, 36)));
+    chart->setBackgroundBrush(QBrush(QColor(20, 22, 26)));  // Black background
+    chart->setPlotAreaBackgroundBrush(QBrush(QColor(20, 22, 26)));
     chart->setPlotAreaBackgroundVisible(true);
     chart->legend()->setVisible(false);
+    chart->setMargins(QMargins(0, 0, 0, 0));
+    
+    // Remove chart title and borders
+    chart->setTitle("");
     
     // Voltage series - yellow (matching Python color: 255, 255, 0)
     widgets.voltageSeries = new QLineSeries();
@@ -121,30 +164,36 @@ void OscilloscopeWidget::setupChannelUI(int channelIdx) {
     widgets.currentSeries = new QLineSeries();
     widgets.currentSeries->setName("Current");
     QPen currentPen(QColor(218, 0, 102));
-    currentPen.setWidth(2);
+    currentPen.setWidth(1.5);
     widgets.currentSeries->setPen(currentPen);
     chart->addSeries(widgets.currentSeries);
     
-    // X axis - sample index (0-99)
+    // X axis - sample index (0-100) - matching Python version
     widgets.axisX = new QValueAxis();
-    widgets.axisX->setRange(0, kMaxSamples - 1);
+    widgets.axisX->setRange(0, 100);
     widgets.axisX->setLabelFormat("%d");
-    widgets.axisX->setTitleText("Sample");
-    widgets.axisX->setGridLineVisible(true);
-    widgets.axisX->setGridLineColor(QColor(50, 52, 58));
+    widgets.axisX->setTickCount(6);  // 0, 20, 40, 60, 80, 100
+    widgets.axisX->setTitleText("");  // No title
+    widgets.axisX->setGridLineVisible(false);  // No grid lines like Python
+    widgets.axisX->setLineVisible(true);
+    widgets.axisX->setLinePen(QPen(QColor(160, 165, 175), 1));
     widgets.axisX->setLabelsColor(QColor(160, 165, 175));
+    widgets.axisX->setLabelsFont(QFont("Arial", 9));
     chart->addAxis(widgets.axisX, Qt::AlignBottom);
     widgets.voltageSeries->attachAxis(widgets.axisX);
     widgets.currentSeries->attachAxis(widgets.axisX);
     
-    // Y axis - voltage/current range (0-5500 mV) - matching Python YRange(0, 5500)
+    // Y axis - voltage/current range (0-5000 mV) - matching Python version
     widgets.axisY = new QValueAxis();
-    widgets.axisY->setRange(0, 5500);
+    widgets.axisY->setRange(0, 5000);
     widgets.axisY->setLabelFormat("%d");
-    widgets.axisY->setTitleText("mV / mA");
-    widgets.axisY->setGridLineVisible(true);
-    widgets.axisY->setGridLineColor(QColor(50, 52, 58));
+    widgets.axisY->setTickCount(6);  // 0, 1000, 2000, 3000, 4000, 5000
+    widgets.axisY->setTitleText("");  // No title
+    widgets.axisY->setGridLineVisible(false);  // No grid lines like Python
+    widgets.axisY->setLineVisible(true);
+    widgets.axisY->setLinePen(QPen(QColor(160, 165, 175), 1));
     widgets.axisY->setLabelsColor(QColor(160, 165, 175));
+    widgets.axisY->setLabelsFont(QFont("Arial", 9));
     chart->addAxis(widgets.axisY, Qt::AlignLeft);
     widgets.voltageSeries->attachAxis(widgets.axisY);
     widgets.currentSeries->attachAxis(widgets.axisY);
@@ -152,8 +201,9 @@ void OscilloscopeWidget::setupChannelUI(int channelIdx) {
     // Create chart view - matching Python PlotWidget
     widgets.chartView = new QChartView(chart, this);
     widgets.chartView->setRenderHint(QPainter::Antialiasing);
-    widgets.chartView->setBackgroundBrush(QBrush(QColor(45, 47, 52)));
-    widgets.chartView->setMinimumHeight(150);
+    widgets.chartView->setBackgroundBrush(QBrush(QColor(20, 22, 26)));  // Black background
+    widgets.chartView->setMinimumHeight(120);
+    widgets.chartView->setStyleSheet("border: none;");
 }
 
 void OscilloscopeWidget::setChannelCount(int count) {
