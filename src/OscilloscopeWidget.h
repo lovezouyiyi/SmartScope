@@ -2,6 +2,8 @@
 
 #include <QWidget>
 #include <QVector>
+
+#ifdef USE_QT_CHARTS
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QCheckBox>
@@ -14,6 +16,9 @@ class QChartView;
 class QLineSeries;
 class QValueAxis;
 QT_END_NAMESPACE
+#else
+#include <QPaintEvent>
+#endif
 
 class OscilloscopeWidget : public QWidget {
     Q_OBJECT
@@ -38,6 +43,7 @@ private slots:
     void toggleChannel(int channelIdx);
     void toggleCurve(int channelIdx, const QString& dataType);
 
+#ifdef USE_QT_CHARTS
 private:
     struct ChannelWidgets {
         QPushButton* button = nullptr;
@@ -55,13 +61,29 @@ private:
     void setupChannelUI(int channelIdx);
     void updateChartData(int channelIdx);
 
+    QVector<ChannelWidgets> channelWidgets_;
+#else
+protected:
+    void paintEvent(QPaintEvent* event) override;
+
+private:
+    void drawChannel(QPainter& p, int channel, const QRect& rect);
+#endif
+
     static constexpr int kMaxChannels = 4;
     static constexpr int kMaxSamples = 100;
-    static constexpr double kMaxVoltage = 5.5;  // 5.5V max
+    static constexpr int kMaxMilliUnit = 5500;
 
-    QVector<ChannelWidgets> channelWidgets_;
-    QVector<QVector<double>> voltageData_;
-    QVector<QVector<double>> currentData_;
+    struct ChannelData {
+        QVector<int> voltageHistory;
+        QVector<int> currentHistory;
+        bool voltageVisible = true;
+        bool currentVisible = true;
+        bool powered = false;
+        bool enabled = true;
+    };
+
+    QVector<ChannelData> channels_;
     QVector<bool> channelEnabled_;
     int channelCount_ = 4;
 };
