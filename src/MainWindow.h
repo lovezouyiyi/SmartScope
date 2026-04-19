@@ -6,8 +6,10 @@
 
 #include <QCheckBox>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMainWindow>
 #include <QPushButton>
+#include <QString>
 #include <QTimer>
 
 #include "DataEngine.h"
@@ -35,6 +37,7 @@ private:
     void setupHub();
     void tryReconnect();
     void pollOneChannel();
+    void onConnectClicked();
 
     void onPowerToggled(int channel, bool checked);
     void onSeriesVisibilityChanged(int channel);
@@ -47,6 +50,8 @@ private:
 
     QWidget* rootWidget_ = nullptr;
     QLabel* connectionLabel_ = nullptr;
+    QLineEdit* portEdit_ = nullptr;
+    QPushButton* connectButton_ = nullptr;
     OscilloscopeWidget* oscilloscope_ = nullptr;
 
     std::array<ChannelUi, kChannelCount> channelUi_{};
@@ -56,4 +61,5 @@ private:
     QTimer pollTimer_;
     QTimer reconnectTimer_;
     int pollIndex_ = 0;
+    QString desiredPort_;
 };

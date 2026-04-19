@@ -27,7 +27,19 @@ void MainWindow::setupUi() {
     rootLayout->setContentsMargins(10, 10, 10, 10);
     rootLayout->setSpacing(8);
 
-    connectionLabel_ = new QLabel("Device: scanning...", rootWidget_);
+    auto* connectRow = new QHBoxLayout();
+    connectRow->setSpacing(8);
+
+    connectRow->addWidget(new QLabel("Port:", rootWidget_));
+    portEdit_ = new QLineEdit(rootWidget_);
+    portEdit_->setPlaceholderText("COM5");
+    connectRow->addWidget(portEdit_, 1);
+
+    connectButton_ = new QPushButton("Connect", rootWidget_);
+    connectRow->addWidget(connectButton_);
+    rootLayout->addLayout(connectRow);
+
+    connectionLabel_ = new QLabel("Device: not connected (input serial port and click Connect)", rootWidget_);
     rootLayout->addWidget(connectionLabel_);
 
     auto* controls = new QGridLayout();
@@ -76,10 +88,13 @@ void MainWindow::setupUi() {
     setCentralWidget(rootWidget_);
     setWindowTitle("SmartScope (C++ Refactor)");
     resize(1180, 760);
+
+    connect(connectButton_, &QPushButton::clicked, this, [this]() { onConnectClicked(); });
+    connect(portEdit_, &QLineEdit::returnPressed, this, [this]() { onConnectClicked(); });
 }
 
 void MainWindow::setupHub() {
-    hub_ = SmartUSBHub::scanAndConnect();
+    hub_.reset();
     updateConnectionText();
 }
 
@@ -88,7 +103,18 @@ void MainWindow::tryReconnect() {
         return;
     }
 
-    hub_ = SmartUSBHub::scanAndConnect();
+    if (desiredPort_.isEmpty()) {
+        updateConnectionText();
+        return;
+    }
+
+    auto candidate = std::make_unique<SmartUSBHub>(desiredPort_);
+    if (candidate->isConnected()) {
+        hub_ = std::move(candidate);
+    } else {
+        hub_.reset();
+    }
+
     updateConnectionText();
 }
 
@@ -140,11 +166,37 @@ void MainWindow::onSeriesVisibilityChanged(int channel) {
     oscilloscope_->update();
 }
 
+void MainWindow::onConnectClicked() {
+    desiredPort_ = portEdit_->text().trimmed();
+    if (desiredPort_.isEmpty()) {
+        connectionLabel_->setText("Device: please input serial port (example: COM5)");
+        return;
+    }
+
+    if (hub_) {
+        hub_->disconnect();
+        hub_.reset();
+    }
+
+    auto candidate = std::make_unique<SmartUSBHub>(desiredPort_);
+    if (candidate->isConnected()) {
+        hub_ = std::move(candidate);
+    } else {
+        hub_.reset();
+    }
+
+    updateConnectionText();
+}
+
 void MainWindow::updateConnectionText() {
     if (hub_ && hub_->isConnected()) {
         connectionLabel_->setText(QString("Device: connected on %1").arg(hub_->portName()));
     } else {
-        connectionLabel_->setText("Device: not connected (plug SmartUSBHub and wait)");
+        if (desiredPort_.isEmpty()) {
+            connectionLabel_->setText("Device: not connected (input serial port and click Connect)");
+        } else {
+            connectionLabel_->setText(QString("Device: not connected (target port: %1)").arg(desiredPort_));
+        }
     }
 }
 
