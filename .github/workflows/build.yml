@@ -1,4 +1,4 @@
-﻿name: Build
+name: Build
 
 on:
   push:
@@ -19,17 +19,50 @@ jobs:
 
       - run: cmake --build build --config Release
 
+      - name: Find executable
+        run: |
+          Write-Host "Searching for SmartScope.exe..."
+          Get-ChildItem -Path . -Filter SmartScope.exe -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+            Write-Host "Found: $($_.FullName)"
+          }
+          
+          # 检查常见位置
+          if (Test-Path "build/Release/SmartScope.exe") {
+            Write-Host "Found in build/Release/"
+          } elseif (Test-Path "build/SmartScope.exe") {
+            Write-Host "Found in build/"
+          } else {
+            Write-Host "Executable not found in expected locations"
+            dir build -Recurse -Filter *.exe
+          }
+
       - name: Deploy Qt dependencies
         run: |
-          # 鍒涘缓鍙戝竷鐩綍
+          # 创建发布目录
           mkdir deploy
           
-          # 澶嶅埗鍙墽琛屾枃浠?          Copy-Item build/Release/SmartScope.exe deploy/
+          # 查找并复制可执行文件
+          $exePath = ""
+          if (Test-Path "build/Release/SmartScope.exe") {
+            $exePath = "build/Release/SmartScope.exe"
+          } elseif (Test-Path "build/SmartScope.exe") {
+            $exePath = "build/SmartScope.exe"
+          } else {
+            $exe = Get-ChildItem -Path build -Filter SmartScope.exe -Recurse | Select-Object -First 1
+            if ($exe) {
+              $exePath = $exe.FullName
+            } else {
+              throw "SmartScope.exe not found!"
+            }
+          }
           
-          # 浣跨敤 windeployqt 鎵撳寘鎵€鏈?Qt 渚濊禆
+          Write-Host "Copying from: $exePath"
+          Copy-Item $exePath deploy/
+          
+          # 使用 windeployqt 打包所有 Qt 依赖
           & "$env:QT_ROOT_DIR\bin\windeployqt.exe" --release --no-translations --no-opengl-sw deploy/SmartScope.exe
           
-          # 鍒楀嚭鎵撳寘鍚庣殑鏂囦欢
+          # 列出打包后的文件
           Get-ChildItem deploy -Recurse | Select-Object FullName
 
       - name: Upload build artifacts
