@@ -1,10 +1,11 @@
-﻿#include <QApplication>
+#include <QApplication>
 #include <QDebug>
 #include <QFile>
 #include <QTextStream>
+#include <QDateTime>
 #include "MainWindow.h"
 
-// 鏃ュ織鏂囦欢璺緞
+// 日志文件路径
 static const QString LOG_FILE = "smartscope_debug.log";
 
 void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg) {
@@ -26,7 +27,7 @@ void messageHandler(QtMsgType type, const QMessageLogContext &context, const QSt
 }
 
 int main(int argc, char *argv[]) {
-    // 瀹夎鑷畾涔夋秷鎭鐞嗗櫒
+    // 安装自定义消息处理器
     qInstallMessageHandler(messageHandler);
     
     qDebug() << "=== SmartScope Starting ===";
