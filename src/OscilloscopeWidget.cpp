@@ -11,6 +11,9 @@
 #include <QPen>
 #include <QDebug>
 
+// Include QtCharts classes without namespace prefix
+// Qt6 Charts classes are available after find_package(Qt6 COMPONENTS Charts)
+
 OscilloscopeWidget::OscilloscopeWidget(QWidget* parent)
     : QWidget(parent) {
     setMinimumSize(900, 600);
@@ -123,7 +126,7 @@ void OscilloscopeWidget::setupChannelUI(int channelIdx) {
     });
     
     // Create chart - matching Python pg.PlotWidget()
-    QtCharts::QChart* chart = new QtCharts::QChart();
+    QChart* chart = new QChart();
     chart->setBackgroundBrush(QBrush(QColor(20, 22, 26)));
     chart->setPlotAreaBackgroundBrush(QBrush(QColor(20, 22, 26)));
     chart->setPlotAreaBackgroundVisible(true);
@@ -132,21 +135,21 @@ void OscilloscopeWidget::setupChannelUI(int channelIdx) {
     chart->setMargins(QMargins(5, 5, 5, 5));
     
     // Voltage series - matching Python plot(pen=pg.mkPen(color=(255,255,0), width=1))
-    widgets.voltageSeries = new QtCharts::QLineSeries();
+    widgets.voltageSeries = new QLineSeries();
     QPen voltagePen(voltageColor);
     voltagePen.setWidth(1);
     widgets.voltageSeries->setPen(voltagePen);
     chart->addSeries(widgets.voltageSeries);
     
     // Current series - matching Python plot(pen=pg.mkPen(color=(218,0,102), width=1))
-    widgets.currentSeries = new QtCharts::QLineSeries();
+    widgets.currentSeries = new QLineSeries();
     QPen currentPen(currentColor);
     currentPen.setWidth(1);
     widgets.currentSeries->setPen(currentPen);
     chart->addSeries(widgets.currentSeries);
     
     // X axis - sample index 0-99
-    widgets.axisX = new QtCharts::QValueAxis();
+    widgets.axisX = new QValueAxis();
     widgets.axisX->setRange(0, kMaxSamples - 1);
     widgets.axisX->setLabelFormat("%d");
     widgets.axisX->setTickCount(6);
@@ -161,7 +164,7 @@ void OscilloscopeWidget::setupChannelUI(int channelIdx) {
     widgets.currentSeries->attachAxis(widgets.axisX);
     
     // Y axis - matching Python setYRange(0, 5500)
-    widgets.axisY = new QtCharts::QValueAxis();
+    widgets.axisY = new QValueAxis();
     widgets.axisY->setRange(0, 5500);
     widgets.axisY->setLabelFormat("%d");
     widgets.axisY->setTickCount(6);
@@ -181,7 +184,7 @@ void OscilloscopeWidget::setupChannelUI(int channelIdx) {
     widgets.axisY->setTitleBrush(QBrush(QColor(160, 165, 175)));
     
     // Create chart view - matching Python PlotWidget
-    widgets.chartView = new QtCharts::QChartView(chart, this);
+    widgets.chartView = new QChartView(chart, this);
     widgets.chartView->setRenderHint(QPainter::Antialiasing);
     widgets.chartView->setBackgroundBrush(QBrush(QColor(20, 22, 26)));
     widgets.chartView->setStyleSheet("border: none;");

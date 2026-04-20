@@ -8,11 +8,13 @@
 #include <QPushButton>
 #include <QTimer>
 
-QT_BEGIN_NAMESPACE
+// Forward declarations for QtCharts classes
 class QChart;
 class QChartView;
 class QLineSeries;
 class QValueAxis;
+
+QT_BEGIN_NAMESPACE
 class QLabel;
 QT_END_NAMESPACE
 
