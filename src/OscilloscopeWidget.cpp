@@ -129,22 +129,20 @@ void OscilloscopeWidget::setupChannelUI(int channelIdx) {
     chart->setPlotAreaBackgroundVisible(true);
     chart->legend()->setVisible(false);
     chart->setTitle("");
-    chart->setMargins(QMargins(5, 5, 5, 5));
+    chart->setMargins(QMargins(60, 10, 20, 30));  // More left margin for Y axis labels
     
     // Voltage series - matching Python plot(pen=pg.mkPen(color=(255,255,0), width=1))
     widgets.voltageSeries = new QLineSeries();
-    widgets.voltageSeries->setUseOpenGL(true);  // Enable OpenGL for better performance
     QPen voltagePen(voltageColor);
-    voltagePen.setWidth(2);
+    voltagePen.setWidth(1.5);
     voltagePen.setStyle(Qt::SolidLine);
     widgets.voltageSeries->setPen(voltagePen);
     chart->addSeries(widgets.voltageSeries);
     
     // Current series - matching Python plot(pen=pg.mkPen(color=(218,0,102), width=1))
     widgets.currentSeries = new QLineSeries();
-    widgets.currentSeries->setUseOpenGL(true);
     QPen currentPen(currentColor);
-    currentPen.setWidth(1.5);
+    currentPen.setWidth(1.0);
     currentPen.setStyle(Qt::SolidLine);
     widgets.currentSeries->setPen(currentPen);
     chart->addSeries(widgets.currentSeries);
@@ -156,10 +154,9 @@ void OscilloscopeWidget::setupChannelUI(int channelIdx) {
     widgets.axisX->setTickCount(6);  // Shows: 0, 20, 40, 60, 80, 100
     widgets.axisX->setGridLineVisible(false);
     widgets.axisX->setLineVisible(true);
-    widgets.axisX->setLinePen(QPen(QColor(160, 165, 175), 1));
+    widgets.axisX->setLinePen(QPen(QColor(120, 125, 135), 1));
     widgets.axisX->setLabelsColor(QColor(160, 165, 175));
-    widgets.axisX->setLabelsFont(QFont("Arial", 9));
-    widgets.axisX->setTitleBrush(QColor(160, 165, 175));
+    widgets.axisX->setLabelsFont(QFont("Consolas", 8));
     chart->addAxis(widgets.axisX, Qt::AlignBottom);
     widgets.voltageSeries->attachAxis(widgets.axisX);
     widgets.currentSeries->attachAxis(widgets.axisX);
@@ -171,22 +168,20 @@ void OscilloscopeWidget::setupChannelUI(int channelIdx) {
     widgets.axisY->setTickCount(6);  // Shows: 0, 1000, 2000, 3000, 4000, 5000
     widgets.axisY->setGridLineVisible(false);
     widgets.axisY->setLineVisible(true);
-    widgets.axisY->setLinePen(QPen(QColor(160, 165, 175), 1));
+    widgets.axisY->setLinePen(QPen(QColor(120, 125, 135), 1));
     widgets.axisY->setLabelsColor(QColor(160, 165, 175));
-    widgets.axisY->setLabelsFont(QFont("Arial", 9));
+    widgets.axisY->setLabelsFont(QFont("Consolas", 8));
+    // Set Y axis title to "Channel X" (vertical text on left side)
+    widgets.axisY->setTitleText(QString("Channel %1").arg(chNum));
     widgets.axisY->setTitleBrush(QColor(160, 165, 175));
+    widgets.axisY->setTitleFont(QFont("Arial", 9, QFont::Bold));
     chart->addAxis(widgets.axisY, Qt::AlignLeft);
     widgets.voltageSeries->attachAxis(widgets.axisY);
     widgets.currentSeries->attachAxis(widgets.axisY);
     
-    // Set left label - matching Python setLabel("left", f"Channel {channel}")
-    // Qt Charts doesn't have direct equivalent, we use axis title
-    widgets.axisY->setTitleText(QString("Channel %1").arg(chNum));
-    widgets.axisY->setTitleBrush(QBrush(QColor(160, 165, 175)));
-    
     // Create chart view - matching Python PlotWidget
     widgets.chartView = new QChartView(chart, this);
-    widgets.chartView->setRenderHint(QPainter::Antialiasing);
+    widgets.chartView->setRenderHint(QPainter::Antialiasing, true);
     widgets.chartView->setBackgroundBrush(QBrush(QColor(20, 22, 26)));
     widgets.chartView->setStyleSheet("border: none;");
     widgets.chartView->setMinimumHeight(130);
