@@ -11,9 +11,6 @@
 #include <QPen>
 #include <QDebug>
 
-// Include QtCharts classes without namespace prefix
-// Qt6 Charts classes are available after find_package(Qt6 COMPONENTS Charts)
-
 OscilloscopeWidget::OscilloscopeWidget(QWidget* parent)
     : QWidget(parent) {
     setMinimumSize(900, 600);
