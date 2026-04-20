@@ -145,32 +145,30 @@ void OscilloscopeWidget::setupChannelUI(int channelIdx) {
     widgets.currentSeries->setPen(currentPen);
     chart->addSeries(widgets.currentSeries);
     
-    // X axis - sample index 0-99
+    // X axis - sample index 0-100, matching Python
     widgets.axisX = new QValueAxis();
-    widgets.axisX->setRange(0, kMaxSamples - 1);
+    widgets.axisX->setRange(0, 100);
     widgets.axisX->setLabelFormat("%d");
-    widgets.axisX->setTickCount(6);
-    widgets.axisX->setTitleText("");
+    widgets.axisX->setTickCount(6);  // Shows: 0, 20, 40, 60, 80, 100
     widgets.axisX->setGridLineVisible(false);
     widgets.axisX->setLineVisible(true);
-    widgets.axisX->setLinePen(QPen(QColor(100, 105, 115), 1));
+    widgets.axisX->setLinePen(QPen(QColor(160, 165, 175), 1));
     widgets.axisX->setLabelsColor(QColor(160, 165, 175));
-    widgets.axisX->setLabelsFont(QFont("Arial", 8));
+    widgets.axisX->setLabelsFont(QFont("Arial", 9));
     chart->addAxis(widgets.axisX, Qt::AlignBottom);
     widgets.voltageSeries->attachAxis(widgets.axisX);
     widgets.currentSeries->attachAxis(widgets.axisX);
     
-    // Y axis - matching Python setYRange(0, 5500)
+    // Y axis - 0-5000 mV, matching Python setYRange(0, 5500)
     widgets.axisY = new QValueAxis();
-    widgets.axisY->setRange(0, 5500);
+    widgets.axisY->setRange(0, 5000);
     widgets.axisY->setLabelFormat("%d");
-    widgets.axisY->setTickCount(6);
-    widgets.axisY->setTitleText("");
+    widgets.axisY->setTickCount(6);  // Shows: 0, 1000, 2000, 3000, 4000, 5000
     widgets.axisY->setGridLineVisible(false);
     widgets.axisY->setLineVisible(true);
-    widgets.axisY->setLinePen(QPen(QColor(100, 105, 115), 1));
+    widgets.axisY->setLinePen(QPen(QColor(160, 165, 175), 1));
     widgets.axisY->setLabelsColor(QColor(160, 165, 175));
-    widgets.axisY->setLabelsFont(QFont("Arial", 8));
+    widgets.axisY->setLabelsFont(QFont("Arial", 9));
     chart->addAxis(widgets.axisY, Qt::AlignLeft);
     widgets.voltageSeries->attachAxis(widgets.axisY);
     widgets.currentSeries->attachAxis(widgets.axisY);
