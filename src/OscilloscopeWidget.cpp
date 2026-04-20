@@ -133,15 +133,19 @@ void OscilloscopeWidget::setupChannelUI(int channelIdx) {
     
     // Voltage series - matching Python plot(pen=pg.mkPen(color=(255,255,0), width=1))
     widgets.voltageSeries = new QLineSeries();
+    widgets.voltageSeries->setUseOpenGL(true);  // Enable OpenGL for better performance
     QPen voltagePen(voltageColor);
-    voltagePen.setWidth(1);
+    voltagePen.setWidth(2);
+    voltagePen.setStyle(Qt::SolidLine);
     widgets.voltageSeries->setPen(voltagePen);
     chart->addSeries(widgets.voltageSeries);
     
     // Current series - matching Python plot(pen=pg.mkPen(color=(218,0,102), width=1))
     widgets.currentSeries = new QLineSeries();
+    widgets.currentSeries->setUseOpenGL(true);
     QPen currentPen(currentColor);
-    currentPen.setWidth(1);
+    currentPen.setWidth(1.5);
+    currentPen.setStyle(Qt::SolidLine);
     widgets.currentSeries->setPen(currentPen);
     chart->addSeries(widgets.currentSeries);
     
@@ -155,6 +159,7 @@ void OscilloscopeWidget::setupChannelUI(int channelIdx) {
     widgets.axisX->setLinePen(QPen(QColor(160, 165, 175), 1));
     widgets.axisX->setLabelsColor(QColor(160, 165, 175));
     widgets.axisX->setLabelsFont(QFont("Arial", 9));
+    widgets.axisX->setTitleBrush(QColor(160, 165, 175));
     chart->addAxis(widgets.axisX, Qt::AlignBottom);
     widgets.voltageSeries->attachAxis(widgets.axisX);
     widgets.currentSeries->attachAxis(widgets.axisX);
@@ -169,6 +174,7 @@ void OscilloscopeWidget::setupChannelUI(int channelIdx) {
     widgets.axisY->setLinePen(QPen(QColor(160, 165, 175), 1));
     widgets.axisY->setLabelsColor(QColor(160, 165, 175));
     widgets.axisY->setLabelsFont(QFont("Arial", 9));
+    widgets.axisY->setTitleBrush(QColor(160, 165, 175));
     chart->addAxis(widgets.axisY, Qt::AlignLeft);
     widgets.voltageSeries->attachAxis(widgets.axisY);
     widgets.currentSeries->attachAxis(widgets.axisY);
@@ -284,17 +290,26 @@ void OscilloscopeWidget::updateChartData(int channelIdx) {
     
     // Update voltage series - matching Python setData
     if (widgets.voltageSeries) {
-        widgets.voltageSeries->clear();
+        QVector<QPointF> points;
+        points.reserve(kMaxSamples);
         for (int i = 0; i < kMaxSamples; ++i) {
-            widgets.voltageSeries->append(i, voltageData_[channelIdx][i]);
+            points.append(QPointF(i, voltageData_[channelIdx][i]));
         }
+        widgets.voltageSeries->replace(points);
     }
     
     // Update current series - matching Python setData
     if (widgets.currentSeries) {
-        widgets.currentSeries->clear();
+        QVector<QPointF> points;
+        points.reserve(kMaxSamples);
         for (int i = 0; i < kMaxSamples; ++i) {
-            widgets.currentSeries->append(i, currentData_[channelIdx][i]);
+            points.append(QPointF(i, currentData_[channelIdx][i]));
         }
+        widgets.currentSeries->replace(points);
+    }
+    
+    // Force chart to update - matching Python replot
+    if (widgets.chartView && widgets.chartView->chart()) {
+        widgets.chartView->chart()->update();
     }
 }
