@@ -13,7 +13,7 @@
 #include <QLabel>
 #include <QPen>
 #include <QDebug>
-
+//sa'sasasa
 
 
 QT_CHARTS_USE_NAMESPACE
