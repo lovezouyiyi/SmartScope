@@ -11,7 +11,8 @@
 #include <QPen>
 #include <QDebug>
 
-QT_CHARTS_USE_NAMESPACE
+// Use QtCharts namespace explicitly
+using namespace QtCharts;
 
 OscilloscopeWidget::OscilloscopeWidget(QWidget* parent)
     : QWidget(parent) {
