@@ -33,48 +33,40 @@ OscilloscopeWidget::OscilloscopeWidget(QWidget* parent)
         channels_[i].currentHistory.resize(kMaxSamples, 0);
     }
     
-    // Main layout - horizontal layout with left panel and right charts (matching Python version exactly)
-    auto* mainLayout = new QHBoxLayout(this);
+    // Main layout - vertical layout, each channel is one row (matching Python version exactly)
+    auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(8, 8, 8, 8);
-    mainLayout->setSpacing(12);
+    mainLayout->setSpacing(8);
     
-    // Left panel - vertical layout for all channel controls
-    auto* leftPanel = new QVBoxLayout();
-    leftPanel->setSpacing(12);
-    leftPanel->addStretch();  // Top spacing
-    
-    // Create UI for each channel
+    // Create UI for each channel - each channel is a horizontal row
     for (int ch = 0; ch < kMaxChannels; ++ch) {
         setupChannelUI(ch);
         
-        // Each channel control group
-        auto* channelControlLayout = new QVBoxLayout();
-        channelControlLayout->setSpacing(4);
+        // Each channel gets a horizontal row layout
+        auto* rowLayout = new QHBoxLayout();
+        rowLayout->setSpacing(12);
+        
+        // Left side: vertical layout for controls (button + checkboxes)
+        auto* controlLayout = new QVBoxLayout();
+        controlLayout->setSpacing(6);
+        controlLayout->setContentsMargins(0, 0, 0, 0);
+        controlLayout->addStretch();  // Top spacing
         
         // Add button
-        channelControlLayout->addWidget(channelWidgets_[ch].button);
-        channelControlLayout->addSpacing(4);
+        controlLayout->addWidget(channelWidgets_[ch].button);
+        controlLayout->addSpacing(4);
         
         // Add checkboxes
-        channelControlLayout->addWidget(channelWidgets_[ch].voltageCheck);
-        channelControlLayout->addWidget(channelWidgets_[ch].currentCheck);
+        controlLayout->addWidget(channelWidgets_[ch].voltageCheck);
+        controlLayout->addWidget(channelWidgets_[ch].currentCheck);
         
-        leftPanel->addLayout(channelControlLayout);
-        leftPanel->addSpacing(8);
+        rowLayout->addLayout(controlLayout);
+        
+        // Right side: chart view (takes most space)
+        rowLayout->addWidget(channelWidgets_[ch].chartView, 1);
+        
+        mainLayout->addLayout(rowLayout);
     }
-    
-    leftPanel->addStretch();  // Bottom spacing
-    mainLayout->addLayout(leftPanel);
-    
-    // Right panel - vertical layout for all charts
-    auto* rightPanel = new QVBoxLayout();
-    rightPanel->setSpacing(8);
-    
-    for (int ch = 0; ch < kMaxChannels; ++ch) {
-        rightPanel->addWidget(channelWidgets_[ch].chartView, 1);
-    }
-    
-    mainLayout->addLayout(rightPanel, 1);
 }
 
 OscilloscopeWidget::~OscilloscopeWidget() {
